@@ -301,7 +301,7 @@ INSERT IGNORE INTO `config` (`config_key`, `config_value`) VALUES
 
 ## **📜 许可证**
 本项目基于 MIT License 开源，欢迎自由使用、修改和分发。
-若用于商业用途，无需额外授权，但请保留原始作者信息（可选）。
+若用于商业用途，无需额外授权，但请保留原始作者信息。
 
 ## **如果对项目有任何建议或问题，欢迎提交 Issue 或 Pull Request！**
 ## **您的 Star ⭐ 是对我们最大的鼓励。**
