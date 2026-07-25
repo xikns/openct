@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 unset($_SESSION['install_db']);
-                $success = '安装成功！<a href="index.php">进入首页</a>';
+                $success = '安装成功！<a href="index.php" style="color:#4f46e5;text-decoration:underline;">进入首页</a>';
                 $step = 3; // 完成
             } catch (Exception $e) {
                 // 发生异常时也要尝试恢复外键检查（避免遗留锁表状态）
@@ -151,60 +151,206 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <title>安装向导 - 班级积分管理系统</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .install-box { background: white; border-radius: 2rem; padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.1); max-width: 500px; width: 100%; }
+        /* 统一系统风格，摒弃渐变背景和Bootstrap */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        body {
+            background-color: #f5f6fa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .install-wrapper {
+            width: 100%;
+            max-width: 440px;
+        }
+        .install-box {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 30px 35px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+        }
+        .install-box h2 {
+            font-size: 20px;
+            color: #1f2937;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .install-box h5 {
+            font-size: 15px;
+            color: #374151;
+            margin-bottom: 15px;
+        }
+        
+        /* 进度条可视化组件 */
+        .step-progress {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        .step-text {
+            font-size: 13px;
+            color: #6b7280;
+            white-space: nowrap;
+        }
+        .step-track {
+            flex: 1;
+            height: 6px;
+            background: #e8e8ed;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .step-fill {
+            height: 100%;
+            background: #4f46e5;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        /* 信息提示框 */
+        .msg-box {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border: 1px solid transparent;
+        }
+        .msg-error { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+        .msg-success { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+
+        /* 表单元素 */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #4b5563;
+            margin-bottom: 6px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: 0.2s;
+            background: white;
+        }
+        .form-control:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        /* 按钮 */
+        .btn-install {
+            width: 100%;
+            padding: 12px;
+            border-radius: 6px;
+            border: none;
+            background: #4f46e5;
+            color: white;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 5px;
+        }
+        .btn-install:hover { background: #4338ca; }
+        .btn-install:disabled { opacity: 0.6; cursor: not-allowed; }
+        
+        .footer-link {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .footer-link a { color: #4f46e5; text-decoration: none; }
+        .footer-link a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
-<div class="install-box">
-    <h2 class="text-center mb-4">🚀 班级积分管理系统 安装</h2>
-    <?php if ($error): ?>
-        <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
-    <?php endif; ?>
-    <?php if ($success): ?>
-        <div class="alert alert-success"><?= $success ?></div>
-    <?php endif; ?>
+<div class="install-wrapper">
+    <div class="install-box">
+        <h2>🚀 系统安装</h2>
 
-    <?php if ($step == 1): ?>
-        <form method="post">
-            <div class="mb-3">
-                <label>数据库主机</label>
-                <input type="text" name="host" class="form-control" value="localhost" required>
+        <!-- 可视化进度条 -->
+        <div class="step-progress">
+            <span class="step-text">
+                <?php 
+                    if ($step == 3) echo '安装完成';
+                    else echo "步骤 {$step} / 2";
+                ?>
+            </span>
+            <div class="step-track">
+                <div class="step-fill" style="width: <?php echo ($step==3) ? '100%' : ($step*50) . '%'; ?>;"></div>
             </div>
-            <div class="mb-3">
-                <label>数据库名</label>
-                <input type="text" name="dbname" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label>用户名</label>
-                <input type="text" name="dbuser" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label>密码</label>
-                <input type="password" name="dbpass" class="form-control">
-            </div>
-            <button type="submit" class="btn btn-warning w-100 btn-lg">测试连接并继续</button>
-        </form>
-    <?php elseif ($step == 2): ?>
-        <form method="post">
+        </div>
+
+        <!-- 错误提示 -->
+        <?php if ($error): ?>
+            <div class="msg-box msg-error"><?= htmlspecialchars($error) ?></div>
+        <?php endif; ?>
+        <!-- 成功提示 -->
+        <?php if ($success): ?>
+            <div class="msg-box msg-success"><?= $success ?></div>
+        <?php endif; ?>
+
+        <?php if ($step == 1): ?>
+            <!-- 第一步：数据库连接 -->
+            <form method="post">
+                <div class="form-group">
+                    <label>数据库主机</label>
+                    <input type="text" name="host" class="form-control" value="localhost" required>
+                </div>
+                <div class="form-group">
+                    <label>数据库名</label>
+                    <input type="text" name="dbname" class="form-control" placeholder="例如：class_points" required>
+                </div>
+                <div class="form-group">
+                    <label>数据库用户名</label>
+                    <input type="text" name="dbuser" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>数据库密码</label>
+                    <input type="password" name="dbpass" class="form-control">
+                </div>
+                <button type="submit" class="btn-install">连接并继续</button>
+            </form>
+        <?php elseif ($step == 2): ?>
+            <!-- 第二步：创建管理员账号 -->
             <h5>创建管理员账号</h5>
-            <div class="mb-3">
-                <label>账号（用户名）</label>
-                <input type="text" name="admin_user" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label>姓名</label>
-                <input type="text" name="admin_name" class="form-control" required>
-            </div>
-            <div class="mb-3">
-                <label>密码</label>
-                <input type="password" name="admin_pass" class="form-control" required minlength="6">
-            </div>
-            <button type="submit" class="btn btn-success w-100 btn-lg">完成安装</button>
-        </form>
-    <?php endif; ?>
+            <form method="post">
+                <div class="form-group">
+                    <label>账号（管理员用户名）</label>
+                    <input type="text" name="admin_user" class="form-control" placeholder="例如：admin" required>
+                </div>
+                <div class="form-group">
+                    <label>管理员姓名</label>
+                    <input type="text" name="admin_name" class="form-control" placeholder="您的真实姓名" required>
+                </div>
+                <div class="form-group">
+                    <label>登录密码</label>
+                    <input type="password" name="admin_pass" class="form-control" placeholder="至少6位" required minlength="6">
+                </div>
+                <button type="submit" class="btn-install">完成安装</button>
+            </form>
+        <?php endif; ?>
+        
+        <?php if ($step != 3): ?>
+            <div class="footer-link">已有系统？ <a href="login.php">去登录</a></div>
+        <?php endif; ?>
+    </div>
 </div>
 </body>
 </html>
