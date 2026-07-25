@@ -187,9 +187,9 @@ OpenCT班级积分管理系统
 当教师开启抽奖开关后，首页会显示“🎁 积分抽奖”按钮。进入抽奖页，看到彩色转盘，每次消耗教师设定的积分（如 10 分）。点击转盘中央按钮，指针旋转后停止，显示中奖结果，积分实时减少。若积分不足，按钮自动禁用；可连续抽奖直到积分不够。
 
 
-# **📁 目录结构**
+## 📁 目录结构
 
-text
+```text
 .
 ├── admin/                  # 后台管理页面
 │   ├── index.php           # 仪表盘
@@ -227,7 +227,7 @@ text
 ├── upgrade_all.php         # 数据库升级脚本（建议删除）
 ├── .htaccess               # Apache 安全规则（可选）
 └── README.md               # 本文件
-
+```
 
 # **⚙️ 常见问题**
 Q: 安装时提示“数据库连接失败”
@@ -246,10 +246,11 @@ Q: 如何重新安装？
 A: 删除 includes/config.php 文件，再次访问首页会自动进入安装向导。注意：此操作会清空所有数据！
 
 
-# **📄 附录：手动建表 SQL**
-如果自动升级脚本无效，可在数据库管理工具中执行以下 SQL（先选择正确的数据库）：
+## 📄 附录：手动建表 SQL
 
-`
+如果自动升级脚本无效，可在数据库管理工具中执行以下 SQL（先选择正确的数据库）。
+
+```sql
 -- 积分奖品表
 CREATE TABLE IF NOT EXISTS `prizes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -296,7 +297,7 @@ INSERT IGNORE INTO `config` (`config_key`, `config_value`) VALUES
 ('lottery_cost', '10'),
 ('penalty_enabled', '0'),
 ('penalty_count', '3');
-`
+```
 
 ## **📜 许可证**
 本项目基于 MIT License 开源，欢迎自由使用、修改和分发。
