@@ -1,4 +1,6 @@
 # openct
+<img width="3680" height="1120" alt="openct-image-1" src="https://github.com/user-attachments/assets/62a7a86f-9d71-4a44-95b5-1efae2a3e990" />
+
 班级积分管理系统 使用文档
 目录
 系统概述
