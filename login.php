@@ -41,56 +41,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title><?= htmlspecialchars($website_title) ?> · 登录</title>
     <link rel="stylesheet" href="static/css/quick-website.css" id="stylesheet">
     <style>
-        /* ===== 全局背景 ===== */
+        /* ===== 全局重置：背景纯白 ===== */
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%);
+            background: #ffffff; /* 纯白背景 */
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            margin: 0;
         }
 
-        /* ===== 顶部标题区域 ===== */
-        .login-header {
-            text-align: center;
-            padding: 40px 20px 20px;
+        /* ===== 主容器：左右独立，无外框 ===== */
+        .login-main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 0;
         }
-        .login-header h1 {
-            font-size: 2.8rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            word-break: break-word;
-            margin-bottom: 0.3rem;
-            letter-spacing: -0.5px;
+        .login-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+            width: 100%;
         }
-        .login-header p {
-            color: #6b7280;
-            font-size: 1.1rem;
-            margin-top: 4px;
-            font-weight: 400;
-            letter-spacing: 1px;
+        .login-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+            gap: 40px; /* 左右间距 */
         }
 
-        /* ===== 登录卡片（毛玻璃效果） ===== */
-        .card-apple {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 32px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08), 0 8px 20px rgba(0, 0, 0, 0.02);
+        /* ===== 左侧图片（纯图片，无背景、无文字） ===== */
+        .login-image {
+            flex: 1 1 45%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: transparent; /* 无背景色 */
+        }
+        .login-image img {
+            max-width: 80%;
+            height: auto;
+            display: block;
+        }
+
+        /* ===== 右侧登录卡片（独立卡片） ===== */
+        .login-form {
+            flex: 1 1 45%;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            padding: 40px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             transition: box-shadow 0.3s ease;
-            overflow: hidden;
         }
-        .card-apple:hover {
+        .login-form:hover {
             box-shadow: 0 30px 80px rgba(0, 0, 0, 0.12);
         }
+        .login-form .form-wrapper {
+            width: 100%;
+            max-width: 380px;
+        }
+        .login-form h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #1f2937;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
 
+        /* ===== 表单控件 ===== */
         .form-apple {
             border: 1px solid #e5e7eb;
-            border-radius: 16px;
+            border-radius: 12px;
             padding: 14px 20px;
             font-size: 16px;
             background: rgba(249, 250, 251, 0.8);
@@ -108,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .btn-apple {
             display: inline-block;
             border: none;
-            border-radius: 40px;
+            border-radius: 28px;
             padding: 14px 28px;
             font-size: 16px;
             font-weight: 600;
@@ -153,154 +182,97 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #dc2626;
         }
 
-        /* ===== 底部版权 ===== */
-        .login-footer {
-            text-align: center;
-            padding: 30px 20px 20px;
-            color: #9ca3af;
-            font-size: 0.9rem;
-            line-height: 1.8;
-        }
-        .login-footer a {
-            color: #4f46e5;
-            text-decoration: none;
-        }
-        .login-footer a:hover {
-            text-decoration: underline;
-        }
-
-        /* ===== 响应式适配（增强） ===== */
+        /* ===== 响应式 ===== */
         @media (max-width: 767.98px) {
-            .login-header h1 {
-                font-size: 2.2rem;
+            .login-row {
+                flex-direction: column;
+                gap: 20px;
             }
-            .login-header p {
-                font-size: 0.95rem;
+            .login-image {
+                flex: 1 1 auto;
+                padding: 10px;
             }
-            .card-apple {
-                border-radius: 24px;
+            .login-image img {
+                max-width: 60%;
             }
-            .card-apple .p-5 {
-                padding: 2rem 1.5rem !important;
-            }
-            .form-apple {
-                font-size: 15px;
-                padding: 12px 16px;
-                border-radius: 14px;
-            }
-            .btn-apple {
-                font-size: 15px;
-                padding: 12px 20px;
-            }
-            h2.fw-semibold {
-                font-size: 1.5rem;
-            }
-            .text-accent a {
-                font-size: 14px;
-            }
-            .container.py-5 {
-                padding-top: 1.5rem !important;
-                padding-bottom: 1rem !important;
+            .login-form {
+                flex: 1 1 auto;
+                padding: 30px 20px;
             }
         }
 
         @media (max-width: 575.98px) {
-            .login-header h1 {
-                font-size: 1.8rem;
+            .login-image img {
+                max-width: 50%;
             }
-            .login-header p {
-                font-size: 0.85rem;
+            .login-form {
+                padding: 20px 15px;
             }
-            .card-apple .p-5 {
-                padding: 1.5rem 1rem !important;
+            .login-form h2 {
+                font-size: 1.5rem;
             }
             .form-apple {
                 font-size: 14px;
-                padding: 10px 14px;
-                border-radius: 12px;
+                padding: 12px 16px;
+                border-radius: 10px;
             }
             .btn-apple {
                 font-size: 14px;
-                padding: 10px 16px;
-                border-radius: 30px;
-            }
-            h2.fw-semibold {
-                font-size: 1.3rem;
-            }
-            .alert.rounded-pill {
-                font-size: 13px;
-                padding: 8px 16px;
-            }
-            .login-footer {
-                font-size: 0.8rem;
-                padding: 20px 10px;
+                padding: 12px 20px;
+                border-radius: 24px;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- ===== 顶部标题区域 ===== -->
-    <div class="login-header">
-        <h1><?= htmlspecialchars($website_title) ?></h1>
-        <p>积分管理系统 · 登录</p>
-    </div>
+    <!-- ===== 顶部标题已移除 ===== -->
 
-    <!-- ===== 登录卡片 ===== -->
-    <div class="container py-4">
-        <div class="row justify-content-center align-items-center" style="min-height: 60vh;">
-            <div class="col-lg-7 col-md-9">
-                <div class="card-apple">
-                    <div class="row g-0">
-                        <!-- 左侧图片（中等屏幕及以上显示） -->
-                        <div class="col-md-6 d-none d-md-flex align-items-center justify-content-center" style="background: rgba(245, 245, 247, 0.6);">
-                            <img src="/static/picture/TopImage.png" alt="班级积分" class="img-fluid p-4" style="max-width: 260px;">
-                        </div>
-                        <!-- 右侧登录表单 -->
-                        <div class="col-md-6 p-5">
-                            <h2 class="text-center fw-semibold mb-4" style="color: #1f2937;">登录</h2>
-                            <?php if ($error): ?>
-                                <div class="alert alert-danger rounded-pill"><?= htmlspecialchars($error) ?></div>
-                            <?php endif; ?>
-                            <form method="post">
-                                <div class="mb-3">
-                                    <input type="text" name="username" class="form-apple" placeholder="学号 / 用户名" required>
-                                </div>
-                                <div class="mb-3">
-                                    <input type="password" name="password" class="form-apple" placeholder="密码" required>
-                                </div>
-                                <button type="submit" class="btn-apple primary mb-3">登录</button>
-                            </form>
-                            <p class="text-center text-accent mb-1">
-                                <a href="forgot_password.php">忘记密码？</a>
+    <!-- ===== 主登录区域：左图右表，完全独立 ===== -->
+    <div class="login-main">
+        <div class="login-container">
+            <div class="login-row">
+                <!-- 左侧：仅图片 -->
+                <div class="login-image">
+                    <img src="/static/picture/TopImage.png" alt="班级积分">
+                </div>
+                <!-- 右侧：独立登录卡片 -->
+                <div class="login-form">
+                    <div class="form-wrapper">
+                        <h2>欢迎回来</h2>
+                        <?php if ($error): ?>
+                            <div class="alert alert-danger rounded-pill"><?= htmlspecialchars($error) ?></div>
+                        <?php endif; ?>
+                        <form method="post">
+                            <div class="mb-3">
+                                <input type="text" name="username" class="form-apple" placeholder="学号 / 用户名" required>
+                            </div>
+                            <div class="mb-3">
+                                <input type="password" name="password" class="form-apple" placeholder="密码" required>
+                            </div>
+                            <button type="submit" class="btn-apple primary mb-3">登录</button>
+                        </form>
+                        <p class="text-center text-accent mb-1">
+                            <a href="forgot_password.php">忘记密码？</a>
+                        </p>
+                        <?php if ($allow_register == '1'): ?>
+                            <p class="text-center text-accent mb-0">
+                                没有账号？ <a href="register.php">注册一个</a>
                             </p>
-                            <?php if ($allow_register == '1'): ?>
-                                <p class="text-center text-accent mb-0">
-                                    没有账号？ <a href="register.php">注册一个</a>
-                                </p>
-                            <?php endif; ?>
-                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ===== 底部版权信息 ===== -->
-    <div class="login-footer">
-        技术支持 © 2025-2026 <a href="http://xikexinxi.mysxl.cn" target="_blank">汐科信息工作室</a>. All Rights Reserved.<br>
-        Powered By <a href="http://xikn.rf.gd/" target="_blank">汐科的博客</a>.
-    </div>
-
     <!-- ===== 移除导航栏中的“登录”链接 ===== -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // 查找所有包含“登录”文本的链接，或 href 指向 login.php 的链接
             var navLinks = document.querySelectorAll('.navbar a, .nav-link');
             navLinks.forEach(function(link) {
                 var href = link.getAttribute('href');
                 var text = link.textContent.trim();
-                // 如果链接文本是“登录”或者 href 包含 login.php，则移除
                 if (text === '登录' || (href && href.includes('login.php'))) {
                     link.parentNode.removeChild(link);
                 }

@@ -237,7 +237,28 @@ $lottery_enabled = getConfig('lottery_enabled');
                 max-height: 32px;
             }
         }
+
+        /* ===== 优化 AOS 滑动位移（更克制） ===== */
+        [data-aos^="fade"][data-aos^="fade"] {
+            opacity: 0;
+            transition-property: opacity, transform;
+        }
+        [data-aos="fade-up"] {
+            transform: translateY(20px); /* 默认 50px → 20px */
+        }
+        [data-aos="fade-right"] {
+            transform: translateX(-20px); /* 默认 -50px → -20px */
+        }
+        [data-aos="slide-up"] {
+            transform: translateY(30px); /* 默认 100px → 30px */
+        }
+        [data-aos="fade-in"] {
+            transform: none;
+        }
     </style>
+
+    <!-- ===== AOS 滚动动画样式 ===== -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 
     <script>
         window.addEventListener("load", function() {
@@ -279,7 +300,7 @@ $lottery_enabled = getConfig('lottery_enabled');
                         <a class="nav-link" href="https://xikn.rf.gd" target="_blank">汐科博客</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="https://xikexinxi.msxl.cn" target="_blank">汐科信息工作室</a>
+                        <a class="nav-link" href="https://xikexinxi.mysxl.cn" target="_blank">汐科信息工作室</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link"
@@ -346,7 +367,7 @@ $lottery_enabled = getConfig('lottery_enabled');
     </section>
 
     <!-- ===== 积分排行榜 ===== -->
-    <section class="slice slice-lg" id="ranking">
+    <section class="slice slice-lg" id="ranking" data-aos="fade-up" data-aos-duration="1000">
         <div class="container">
             <div class="py-6">
                 <div class="row row-grid justify-content-between align-items-center">
@@ -379,7 +400,7 @@ $lottery_enabled = getConfig('lottery_enabled');
             </div>
 
             <!-- ===== 班级风采 ===== -->
-            <div class="py-6">
+            <div class="py-6" data-aos="fade-right" data-aos-duration="1000">
                 <div class="row row-grid justify-content-between align-items-center">
                     <div class="col-lg-5">
                         <h5 class="h3">📸 班级风采</h5>
@@ -455,10 +476,11 @@ $lottery_enabled = getConfig('lottery_enabled');
         </div>
     </section>
 
+    <!-- ===== 三张功能卡片 ===== -->
     <section class="slice pt-0">
         <div class="container position-relative zindex-100">
             <div class="row">
-                <div class="col-xl-4 col-sm-6 mt-n7">
+                <div class="col-xl-4 col-sm-6 mt-n7" data-aos="fade-up" data-aos-delay="150" data-aos-duration="1000">
                     <div class="card hover-shadow-lg">
                         <div class="d-flex p-5">
                             <div><span class="badge badge-warning badge-pill">开源</span></div>
@@ -469,7 +491,7 @@ $lottery_enabled = getConfig('lottery_enabled');
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-4 col-sm-6 mt-sm-n7">
+                <div class="col-xl-4 col-sm-6 mt-sm-n7" data-aos="fade-up" data-aos-delay="250" data-aos-duration="1000">
                     <div class="card hover-shadow-lg">
                         <div class="d-flex p-5">
                             <div><span class="badge badge-success badge-pill">专业</span></div>
@@ -480,7 +502,7 @@ $lottery_enabled = getConfig('lottery_enabled');
                         </div>
                     </div>
                 </div>
-                <div class="col-xl-4 col-md-12 col-sm-6 mt-xl-n7">
+                <div class="col-xl-4 col-md-12 col-sm-6 mt-xl-n7" data-aos="fade-up" data-aos-delay="350" data-aos-duration="1000">
                     <div class="card hover-shadow-lg">
                         <div class="d-flex p-5">
                             <div><span class="badge badge-danger badge-pill">简洁</span></div>
@@ -495,6 +517,7 @@ $lottery_enabled = getConfig('lottery_enabled');
         </div>
     </section>
 
+    <!-- ===== 功能介绍 ===== -->
     <section class="slice slice-lg pt-lg-6 pb-0 pb-lg-6 bg-section-secondary">
         <div class="container">
             <div class="row mb-5 justify-content-center text-center">
@@ -503,7 +526,7 @@ $lottery_enabled = getConfig('lottery_enabled');
                 </div>
             </div>
             <div class="row mt-5 text-center">
-                <div class="col-md-4">
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="150" data-aos-duration="1000">
                     <a class="card hover-shadow-lg" href="#" target="_blank" title="SEO智能排名">
                         <div class="card-body pb-5">
                             <div class="pt-4 pb-5">
@@ -514,7 +537,7 @@ $lottery_enabled = getConfig('lottery_enabled');
                         </div>
                     </a>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="250" data-aos-duration="1000">
                     <a class="card hover-shadow-lg" href="#" target="_blank" title="营销策略">
                         <div class="card-body pb-5">
                             <div class="pt-4 pb-5">
@@ -525,7 +548,7 @@ $lottery_enabled = getConfig('lottery_enabled');
                         </div>
                     </a>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-4" data-aos="fade-up" data-aos-delay="350" data-aos-duration="1000">
                     <a class="card hover-shadow-lg" href="#" target="_blank" title="营销定位">
                         <div class="card-body pb-5">
                             <div class="pt-4 pb-5">
@@ -569,5 +592,20 @@ $lottery_enabled = getConfig('lottery_enabled');
     <script src="static/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.28.0/feather.min.js"></script>
     <script>feather.replace();</script>
+
+    <!-- ===== AOS 滚动动画脚本（优化配置） ===== -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        // 仅在桌面端启用滚动动画（宽屏体验更佳）
+        if (window.innerWidth >= 768) {
+            AOS.init({
+                duration: 1200,          // 动画持续时间 1.2 秒
+                once: true,              // 只触发一次
+                easing: 'ease-out-quad', // 二次缓出，先快后慢更自然
+                offset: 80,              // 提前触发位置
+                delay: 50                // 基础延迟
+            });
+        }
+    </script>
 </body>
 </html>
