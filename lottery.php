@@ -2,7 +2,7 @@
 require_once 'includes/db.php';
 require_once 'includes/functions.php';
 
-// ========== AJAX 统一处理（逻辑完全保留） ==========
+// ========== AJAX 统一处理 ==========
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json; charset=utf-8');
 
@@ -111,9 +111,16 @@ $allStudents = [];
 if ($isTeacher) {
     $allStudents = $pdo->query("SELECT id, realname, points FROM users WHERE role IN ('student','student_admin') ORDER BY realname")->fetchAll();
 }
+
+// ---- 获取所有奖品库存（含已抽完的） ----
+$allPrizes = $pdo->query("SELECT * FROM prizes ORDER BY id ASC")->fetchAll();
+$allPenaltyPrizes = [];
+if ($isTeacher) {
+    $allPenaltyPrizes = $pdo->query("SELECT * FROM penalty_prizes ORDER BY id ASC")->fetchAll();
+}
 ?>
 
-<!--- 自定义优化样式（同上一版） -->
+<!--- 自定义优化样式（纯色风格，一页完整显示） -->
 <style>
 :root {
     --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -131,13 +138,13 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
     border: 1px solid rgba(255,255,255,0.4);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    padding: 28px 24px;
+    padding: 20px 20px;
     transition: var(--transition);
 }
 .card-apple:hover { box-shadow: 0 30px 80px rgba(0,0,0,0.12); }
 .nav-pills .nav-link {
     border-radius: 40px;
-    padding: 12px 32px;
+    padding: 10px 28px;
     font-weight: 600;
     color: #4b5563;
     background: rgba(255,255,255,0.5);
@@ -159,8 +166,8 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
     background: rgba(255,255,255,0.7);
     border: 1px solid rgba(0,0,0,0.06);
     border-radius: 16px;
-    padding: 12px 16px;
-    font-size: 1rem;
+    padding: 10px 14px;
+    font-size: 0.95rem;
     transition: var(--transition);
     outline: none;
 }
@@ -170,10 +177,10 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
 }
 .btn-apple {
     border: none;
-    padding: 12px 28px;
+    padding: 10px 24px;
     border-radius: 40px;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.95rem;
     transition: var(--transition);
     cursor: pointer;
     display: inline-flex;
@@ -208,26 +215,30 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
 .wheel-wrapper {
     position: relative;
     display: inline-block;
+    width: 100%;
+    max-width: 500px;
+    margin: 0 auto;
 }
 .wheel-wrapper canvas {
     display: block;
     width: 100%;
-    max-width: 400px;
     height: auto;
+    max-width: 500px;
+    max-height: 500px;
     aspect-ratio: 1/1;
     border-radius: 50%;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
     transition: var(--transition);
 }
 .spin-btn {
-    width: 80px;
-    height: 80px;
+    width: 76px;
+    height: 76px;
     border-radius: 50%;
     background: var(--primary-gradient);
     border: 4px solid white;
     color: white;
     font-weight: 700;
-    font-size: 1.1rem;
+    font-size: 1rem;
     box-shadow: 0 8px 24px rgba(102,126,234,0.5);
     transition: var(--transition);
     cursor: pointer;
@@ -246,31 +257,31 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
 }
 .pointer {
     position: absolute;
-    top: -18px;
+    top: -16px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
     width: 0;
     height: 0;
-    border-left: 20px solid transparent;
-    border-right: 20px solid transparent;
-    border-top: 30px solid #ef4444;
+    border-left: 18px solid transparent;
+    border-right: 18px solid transparent;
+    border-top: 28px solid #ef4444;
     filter: drop-shadow(0 4px 8px rgba(239,68,68,0.4));
 }
 .result-box {
-    min-height: 60px;
+    min-height: 50px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 600;
     background: rgba(255,255,255,0.4);
     border-radius: 40px;
-    padding: 12px 24px;
-    margin-top: 20px;
+    padding: 10px 20px;
+    margin-top: 16px;
     transition: var(--transition);
 }
-.result-box .prize-icon { font-size: 2rem; margin-right: 12px; }
+.result-box .prize-icon { font-size: 1.8rem; margin-right: 12px; }
 .rank-list {
     list-style: none;
     padding: 0;
@@ -279,35 +290,72 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
 .rank-list li {
     display: flex;
     justify-content: space-between;
-    padding: 10px 0;
+    padding: 8px 0;
     border-bottom: 1px solid rgba(0,0,0,0.04);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 .rank-list li:last-child { border-bottom: none; }
 .rank-badge {
     display: inline-block;
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     background: var(--primary-gradient);
     color: white;
     text-align: center;
-    line-height: 28px;
-    font-size: 0.8rem;
+    line-height: 26px;
+    font-size: 0.75rem;
     font-weight: 700;
-    margin-right: 12px;
+    margin-right: 10px;
+}
+/* 库存列表样式 */
+.stock-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.85rem;
+}
+.stock-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px dashed rgba(0,0,0,0.04);
+}
+.stock-list li:last-child { border-bottom: none; }
+.stock-label { color: #4b5563; }
+.stock-count {
+    font-weight: 600;
+    color: #059669;
+}
+.stock-count.empty { color: #dc2626; }
+.stock-divider {
+    border: 0;
+    border-top: 1px solid rgba(0,0,0,0.06);
+    margin: 12px 0;
+}
+@media (max-width: 992px) {
+    .wheel-wrapper { max-width: 400px; }
+    .spin-btn { width: 68px; height: 68px; font-size: 0.9rem; }
+    .pointer { top: -14px; border-left-width: 16px; border-right-width: 16px; border-top-width: 24px; }
 }
 @media (max-width: 768px) {
-    .container { padding: 0 16px; }
-    .card-apple { padding: 20px 16px; }
-    .spin-btn { width: 64px; height: 64px; font-size: 0.9rem; }
-    .pointer { top: -12px; border-left-width: 14px; border-right-width: 14px; border-top-width: 22px; }
+    .container { padding: 0 12px; }
+    .card-apple { padding: 16px 14px; }
+    .wheel-wrapper { max-width: 320px; }
+    .spin-btn { width: 60px; height: 60px; font-size: 0.8rem; border-width: 3px; }
+    .pointer { top: -12px; border-left-width: 14px; border-right-width: 14px; border-top-width: 20px; }
+    .result-box { font-size: 1rem; padding: 8px 16px; min-height: 40px; }
+}
+@media (max-width: 576px) {
+    .wheel-wrapper { max-width: 260px; }
+    .spin-btn { width: 52px; height: 52px; font-size: 0.7rem; border-width: 3px; }
+    .pointer { top: -10px; border-left-width: 12px; border-right-width: 12px; border-top-width: 16px; }
 }
 </style>
 
-<div class="container py-4">
+<div class="container py-3">
   <!-- 标签切换 -->
-  <ul class="nav nav-pills mb-4 justify-content-center" id="lotteryTab" role="tablist">
+  <ul class="nav nav-pills mb-3 justify-content-center" id="lotteryTab" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link active" id="points-tab" data-bs-toggle="pill" data-bs-target="#points-lottery" type="button">🎡 积分抽奖</button>
     </li>
@@ -321,24 +369,13 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
   <div class="tab-content">
     <!-- ========== 积分抽奖面板 ========== -->
     <div class="tab-pane fade show active" id="points-lottery">
-      <div class="row g-4">
+      <div class="row g-3">
+        <!-- 左侧：转盘 + 结果 -->
         <div class="col-lg-8">
           <div class="card-apple text-center">
-            <h3 class="fw-semibold mb-3">🎡 积分抽奖</h3>
-            <?php if ($isTeacher): ?>
-            <div class="mb-4 text-start">
-              <label class="form-label fw-semibold">👤 选择抽奖学生：</label>
-              <select id="pointsStudentSelect" class="form-apple w-100">
-                <?php foreach ($allStudents as $stu): ?>
-                  <option value="<?= $stu['id'] ?>" data-points="<?= $stu['points'] ?>">
-                    <?= htmlspecialchars($stu['realname']) ?>（<?= $stu['points'] ?>分）
-                  </option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-            <?php endif; ?>
-            <!-- 积分显示区域：教师显示当前学生积分，学生显示自己的积分 -->
-            <p class="text-muted mb-4">
+            <h3 class="fw-semibold mb-2" style="font-size:1.4rem;">🎡 积分抽奖</h3>
+            <!-- 积分显示 -->
+            <p class="text-muted mb-3" style="font-size:0.95rem;">
               每次消耗 <strong class="text-primary"><?= $lotteryCost ?></strong> 积分 · 
               <?php if ($isTeacher): ?>
                 <span id="studentPointsLabel">当前学生积分：</span>
@@ -348,16 +385,31 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
               <?php endif; ?>
             </p>
             <div class="wheel-wrapper">
-              <canvas id="pointsWheel" width="400" height="400"></canvas>
+              <canvas id="pointsWheel" width="500" height="500"></canvas>
               <div class="pointer"></div>
               <button id="pointsSpin" class="spin-btn position-absolute top-50 start-50 translate-middle">抽奖</button>
             </div>
             <div id="pointsResult" class="result-box">🎲 点击抽奖试试手气</div>
           </div>
         </div>
+
+        <!-- 右侧：选择抽奖人 + 排行榜 + 积分库存 -->
         <div class="col-lg-4">
+          <?php if ($isTeacher): ?>
+          <div class="card-apple mb-3">
+            <label class="form-label fw-semibold" style="font-size:0.9rem;">👤 选择抽奖学生：</label>
+            <select id="pointsStudentSelect" class="form-apple w-100">
+              <?php foreach ($allStudents as $stu): ?>
+                <option value="<?= $stu['id'] ?>" data-points="<?= $stu['points'] ?>">
+                  <?= htmlspecialchars($stu['realname']) ?>（<?= $stu['points'] ?>分）
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <?php endif; ?>
+
           <div class="card-apple">
-            <h6 class="fw-semibold mb-3">🏆 积分排名 TOP5</h6>
+            <h6 class="fw-semibold mb-2" style="font-size:1rem;">🏆 积分排名 TOP5</h6>
             <ul class="rank-list">
               <?php foreach ($top5 as $i => $s): ?>
                 <li>
@@ -366,35 +418,78 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
                 </li>
               <?php endforeach; ?>
             </ul>
+
+            <hr class="stock-divider">
+            <h6 class="fw-semibold mb-2" style="font-size:0.95rem;">📦 积分奖品库存</h6>
+            <ul class="stock-list">
+              <?php if (!empty($allPrizes)): ?>
+                <?php foreach ($allPrizes as $p): ?>
+                  <li>
+                    <span class="stock-label"><?= htmlspecialchars($p['name']) ?></span>
+                    <span class="stock-count <?= ($p['total'] - $p['drawn']) <= 0 ? 'empty' : '' ?>">
+                      <?= max(0, $p['total'] - $p['drawn']) ?>/<?= $p['total'] ?>
+                    </span>
+                  </li>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <li><span class="stock-label">暂无积分奖品</span></li>
+              <?php endif; ?>
+            </ul>
           </div>
+
           <a href="index.php" class="btn-apple secondary w-100 mt-3">← 返回首页</a>
         </div>
       </div>
     </div>
 
-    <!-- ========== 惩罚抽奖面板（仅教师） ========== -->
+    <!-- ========== 惩罚抽奖面板（左右布局，与积分一致） ========== -->
     <?php if ($isTeacher && $penaltyEnabled): ?>
     <div class="tab-pane fade" id="penalty-lottery">
-      <div class="row justify-content-center">
+      <div class="row g-3">
+        <!-- 左侧：转盘 + 结果 -->
         <div class="col-lg-8">
           <div class="card-apple text-center">
-            <h3 class="fw-semibold mb-3">😈 惩罚抽奖</h3>
-            <div class="mb-4 text-start">
-              <label class="form-label fw-semibold">👤 选择受罚学生（默认积分最低<?= $penaltyCount ?>人）：</label>
-              <select id="penaltyStudentSelect" class="form-apple w-100">
-                <?php foreach ($penaltyStudents as $stu): ?>
-                  <option value="<?= $stu['id'] ?>"><?= htmlspecialchars($stu['realname']) ?>（<?= $stu['points'] ?>分）</option>
-                <?php endforeach; ?>
-              </select>
-            </div>
-            <p class="text-muted mb-4">惩罚抽奖不消耗积分</p>
+            <h3 class="fw-semibold mb-2" style="font-size:1.4rem;">😈 惩罚抽奖</h3>
+            <p class="text-muted mb-3" style="font-size:0.95rem;">惩罚抽奖不消耗积分</p>
             <div class="wheel-wrapper">
-              <canvas id="penaltyWheel" width="400" height="400"></canvas>
+              <canvas id="penaltyWheel" width="500" height="500"></canvas>
               <div class="pointer"></div>
               <button id="penaltySpin" class="spin-btn position-absolute top-50 start-50 translate-middle">惩罚</button>
             </div>
             <div id="penaltyResult" class="result-box">😈 点击惩罚</div>
           </div>
+        </div>
+
+        <!-- 右侧：选择受罚学生 + 惩罚库存 + 返回 -->
+        <div class="col-lg-4">
+          <div class="card-apple mb-3">
+            <label class="form-label fw-semibold" style="font-size:0.9rem;">👤 选择受罚学生（积分最低<?= $penaltyCount ?>人）：</label>
+            <select id="penaltyStudentSelect" class="form-apple w-100">
+              <?php foreach ($penaltyStudents as $stu): ?>
+                <option value="<?= $stu['id'] ?>"><?= htmlspecialchars($stu['realname']) ?>（<?= $stu['points'] ?>分）</option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+
+          <div class="card-apple">
+            <h6 class="fw-semibold mb-2" style="font-size:0.95rem;">📦 惩罚奖品库存</h6>
+            <ul class="stock-list">
+              <?php if (!empty($allPenaltyPrizes)): ?>
+                <?php foreach ($allPenaltyPrizes as $p): ?>
+                  <li>
+                    <span class="stock-label"><?= htmlspecialchars($p['name']) ?></span>
+                    <span class="stock-count <?= ($p['total'] - $p['drawn']) <= 0 ? 'empty' : '' ?>">
+                      <?= max(0, $p['total'] - $p['drawn']) ?>/<?= $p['total'] ?>
+                    </span>
+                  </li>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <li><span class="stock-label">暂无惩罚奖品</span></li>
+              <?php endif; ?>
+            </ul>
+          </div>
+
+          <a href="index.php" class="btn-apple secondary w-100 mt-3">← 返回首页</a>
         </div>
       </div>
     </div>
@@ -402,18 +497,18 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
   </div>
 </div>
 
-<!-- 转盘绘制与动画（优化版 + 积分实时更新修复） -->
+<!-- 转盘绘制与动画（纯色风格）+ 库存实时更新（动画结束后更新） -->
 <script>
 (function() {
-    // ----- 工具函数：颜色生成 -----
+    // ----- 工具函数：颜色生成（纯色，无渐变） -----
     const baseColors = ['#FF6B6B','#4ECDC4','#FFD93D','#6C5CE7','#A8E6CF','#FF8C42','#45B7D1','#F9CA24','#FF7979','#BADC58'];
     function getColor(index, total) {
         if (total <= baseColors.length) return baseColors[index % baseColors.length];
         const hue = (index * 360 / total) % 360;
-        return `hsl(${hue}, 70%, 65%)`;
+        return `hsl(${hue}, 70%, 60%)`;
     }
 
-    // ----- 转盘类 -----
+    // ----- 转盘类（纯色绘制，无渐变） -----
     class Wheel {
         constructor(canvasId, prizes) {
             this.canvas = document.getElementById(canvasId);
@@ -428,7 +523,7 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
         draw(highlightIndex = -1) {
             const ctx = this.ctx;
             const w = this.canvas.width, h = this.canvas.height;
-            const cx = w/2, cy = h/2, r = Math.min(w,h)/2 - 10;
+            const cx = w/2, cy = h/2, r = Math.min(w,h)/2 - 8;
             const total = this.prizes.length;
             if (total === 0) {
                 ctx.clearRect(0,0,w,h);
@@ -441,25 +536,14 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
             const slice = (2 * Math.PI) / total;
             ctx.clearRect(0,0,w,h);
 
-            const grad = ctx.createRadialGradient(cx, cy, r-10, cx, cy, r+10);
-            grad.addColorStop(0, 'rgba(255,255,255,0)');
-            grad.addColorStop(1, 'rgba(255,255,255,0.2)');
-            ctx.beginPath();
-            ctx.arc(cx, cy, r+10, 0, 2*Math.PI);
-            ctx.fillStyle = grad;
-            ctx.fill();
-
             for (let i=0; i<total; i++) {
                 const angle = this.startAngle + i*slice;
                 ctx.beginPath();
                 ctx.moveTo(cx, cy);
                 ctx.arc(cx, cy, r, angle, angle+slice);
                 ctx.closePath();
-                const grad2 = ctx.createRadialGradient(cx, cy, 20, cx, cy, r);
-                const base = getColor(i, total);
-                grad2.addColorStop(0, highlightIndex===i ? '#FFD700' : base);
-                grad2.addColorStop(1, highlightIndex===i ? '#FFA500' : darken(base, 0.2));
-                ctx.fillStyle = grad2;
+                const color = getColor(i, total);
+                ctx.fillStyle = (highlightIndex === i) ? '#FFD700' : color;
                 ctx.fill();
                 ctx.strokeStyle = 'rgba(255,255,255,0.8)';
                 ctx.lineWidth = 2;
@@ -471,20 +555,20 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillStyle = '#fff';
-                ctx.font = 'bold 14px "Inter", sans-serif';
+                ctx.font = 'bold 15px "Inter", sans-serif';
                 ctx.shadowColor = 'rgba(0,0,0,0.3)';
                 ctx.shadowBlur = 6;
                 const text = this.prizes[i].name;
-                const displayText = text.length > 8 ? text.substring(0,6)+'…' : text;
+                const displayText = text.length > 10 ? text.substring(0,8)+'…' : text;
                 ctx.fillText(displayText, r*0.65, 4);
                 ctx.restore();
             }
 
             ctx.beginPath();
-            ctx.arc(cx, cy, 18, 0, 2*Math.PI);
+            ctx.arc(cx, cy, 20, 0, 2*Math.PI);
             ctx.fillStyle = 'white';
-            ctx.shadowColor = 'rgba(0,0,0,0.2)';
-            ctx.shadowBlur = 12;
+            ctx.shadowColor = 'rgba(0,0,0,0.15)';
+            ctx.shadowBlur = 10;
             ctx.fill();
             ctx.shadowBlur = 0;
             ctx.strokeStyle = '#667eea';
@@ -528,12 +612,6 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
         }
     }
 
-    function darken(hex, amount) {
-        let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
-        r = Math.max(0, r - 50); g = Math.max(0, g - 50); b = Math.max(0, b - 50);
-        return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
-    }
-
     // ----- 初始化转盘 -----
     const pointsPrizes = <?= json_encode(array_values($prizes)) ?>;
     const penaltyPrizes = <?= json_encode(array_values($penaltyPrizes)) ?>;
@@ -546,20 +624,47 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
     const studentPointsDisplay = document.getElementById('studentPointsDisplay');
     const pointsCurrent = document.getElementById('pointsCurrent');
 
-    // 如果是教师模式，初始化显示第一个学生的积分，并监听下拉切换
     if (isTeacher && studentSelect && studentPointsDisplay) {
-        // 初始显示
         const firstOpt = studentSelect.options[0];
         if (firstOpt) {
             studentPointsDisplay.textContent = firstOpt.dataset.points || 0;
         }
-        // 切换时更新显示
         studentSelect.addEventListener('change', function() {
             const opt = this.options[this.selectedIndex];
             if (opt) {
                 studentPointsDisplay.textContent = opt.dataset.points || 0;
             }
         });
+    }
+
+    // ========== 库存实时更新函数（供动画回调调用） ==========
+    function updateStock(type, prizeName) {
+        const listSelector = type === 'points' ? '#points-lottery .stock-list' : '#penalty-lottery .stock-list';
+        const list = document.querySelector(listSelector);
+        if (!list) return;
+        const items = list.querySelectorAll('li');
+        for (let item of items) {
+            const label = item.querySelector('.stock-label');
+            if (label && label.textContent.trim() === prizeName) {
+                const countSpan = item.querySelector('.stock-count');
+                if (countSpan) {
+                    const text = countSpan.textContent; // e.g., "5/10"
+                    const parts = text.split('/');
+                    if (parts.length === 2) {
+                        let remaining = parseInt(parts[0]) - 1;
+                        if (remaining < 0) remaining = 0;
+                        const total = parseInt(parts[1]);
+                        countSpan.textContent = remaining + '/' + total;
+                        if (remaining === 0) {
+                            countSpan.classList.add('empty');
+                        } else {
+                            countSpan.classList.remove('empty');
+                        }
+                    }
+                }
+                break;
+            }
+        }
     }
 
     // ----- 积分抽奖 -----
@@ -587,25 +692,21 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
                     this.disabled = false;
                     return;
                 }
-                // 更新积分显示
+                // 更新积分显示（在动画前更新）
                 const newPoints = data.new_points;
                 if (isTeacher) {
-                    // 教师模式：更新当前学生积分显示
                     if (studentPointsDisplay) {
                         studentPointsDisplay.textContent = newPoints;
                     }
-                    // 同时更新下拉框中对应选项的 data-points 和显示文本
                     if (studentSelect) {
                         const selectedOpt = studentSelect.options[studentSelect.selectedIndex];
                         if (selectedOpt) {
                             selectedOpt.dataset.points = newPoints;
-                            // 更新显示文本（保留姓名，更新积分）
                             const name = selectedOpt.text.replace(/（\d+分）$/, '');
                             selectedOpt.text = name + '（' + newPoints + '分）';
                         }
                     }
                 } else {
-                    // 学生自己抽：更新 pointsCurrent
                     if (pointsCurrent) {
                         pointsCurrent.textContent = newPoints;
                     }
@@ -618,7 +719,10 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
                     this.disabled = false;
                     return;
                 }
+                // 动画结束后更新库存和结果
                 pointsWheel.spinTo(idx, () => {
+                    // 库存更新放在动画结束后
+                    updateStock('points', data.prize);
                     pointsResult.innerHTML = `🎉 恭喜获得：<strong>${data.prize}</strong>！`;
                     const cost = <?= $lotteryCost ?>;
                     if (newPoints < cost) {
@@ -637,7 +741,7 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
         });
     }
 
-    // ----- 惩罚抽奖（无需积分更新） -----
+    // ----- 惩罚抽奖 -----
     const penaltySpinBtn = document.getElementById('penaltySpin');
     const penaltyResult = document.getElementById('penaltyResult');
     if (penaltySpinBtn) {
@@ -664,7 +768,9 @@ body { background: #f0f4ff; font-family: 'Inter', -apple-system, BlinkMacSystemF
                     this.disabled = false;
                     return;
                 }
+                // 动画结束后更新库存和结果
                 penaltyWheel.spinTo(idx, () => {
+                    updateStock('penalty', data.prize);
                     penaltyResult.innerHTML = `😈 <strong>${data.target_name}</strong> 获得了：<strong>${data.prize}</strong>`;
                     this.disabled = false;
                     this.textContent = '再惩罚';

@@ -50,9 +50,9 @@ $lottery_enabled = getConfig('lottery_enabled');
         body:not(.loaded) { overflow: hidden; }
         body.loaded>div.preloader { animation: hidePreloader .5s linear .5s forwards; }
 
-        /* ===== 首屏全屏 ===== */
+        /* ===== 首屏全屏（桌面 & 手机通用） ===== */
         .hero-fullscreen {
-            min-height: calc(100vh - 76px);
+            min-height: calc(100vh - 76px); /* 76px 为桌面导航高度 */
             display: flex;
             align-items: center;
             padding-top: 0;
@@ -61,12 +61,6 @@ $lottery_enabled = getConfig('lottery_enabled');
         .hero-fullscreen .container,
         .hero-fullscreen .row {
             height: 100%;
-        }
-        @media (max-width: 991.98px) {
-            .hero-fullscreen { min-height: calc(100vh - 60px); }
-        }
-        @media (max-width: 575.98px) {
-            .hero-fullscreen { min-height: calc(100vh - 56px); }
         }
 
         /* ===== 入场动画 ===== */
@@ -153,11 +147,18 @@ $lottery_enabled = getConfig('lottery_enabled');
         }
         #ranking { scroll-margin-top: 80px; }
 
-        /* ===== 响应式补充 ===== */
-        @media (max-width: 767.98px) {
+        /* ===== 响应式补充（手机端全屏首屏修复） ===== */
+        @media (max-width: 991.98px) {
             .hero-fullscreen {
-                min-height: auto;
-                padding: 3rem 0;
+                min-height: calc(100vh - 60px); /* 平板导航高度 */
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            /* 手机端首屏保持全屏高度，减去导航栏高度（56px） */
+            .hero-fullscreen {
+                min-height: calc(100vh - 56px); /* 手机导航高度 */
+                padding: 0; /* 移除额外内边距，保持 flex 居中 */
             }
             .display-4 {
                 font-size: 2.2rem;
@@ -205,6 +206,10 @@ $lottery_enabled = getConfig('lottery_enabled');
         }
 
         @media (max-width: 575.98px) {
+            /* 小屏手机进一步调整 */
+            .hero-fullscreen {
+                min-height: calc(100vh - 56px); /* 保持一致 */
+            }
             .display-4 {
                 font-size: 1.8rem;
             }
@@ -244,13 +249,13 @@ $lottery_enabled = getConfig('lottery_enabled');
             transition-property: opacity, transform;
         }
         [data-aos="fade-up"] {
-            transform: translateY(20px); /* 默认 50px → 20px */
+            transform: translateY(20px);
         }
         [data-aos="fade-right"] {
-            transform: translateX(-20px); /* 默认 -50px → -20px */
+            transform: translateX(-20px);
         }
         [data-aos="slide-up"] {
-            transform: translateY(30px); /* 默认 100px → 30px */
+            transform: translateY(30px);
         }
         [data-aos="fade-in"] {
             transform: none;
@@ -260,11 +265,22 @@ $lottery_enabled = getConfig('lottery_enabled');
     <!-- ===== AOS 滚动动画样式 ===== -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 
+    <!-- ===== 预加载与动画触发脚本（已修复：提前显示内容） ===== -->
     <script>
-        window.addEventListener("load", function() {
-            setTimeout(function() {
-                document.querySelector('body').classList.add('loaded');
-            }, 300);
+        function addLoaded() {
+            document.body.classList.add('loaded');
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(addLoaded, 300);
+            });
+        } else {
+            setTimeout(addLoaded, 300);
+        }
+        window.addEventListener('load', function() {
+            if (!document.body.classList.contains('loaded')) {
+                addLoaded();
+            }
         });
     </script>
 
@@ -306,16 +322,7 @@ $lottery_enabled = getConfig('lottery_enabled');
                         <a class="nav-link"
                            href="https://github.com/xikns/openct"
                            target="_blank"
-                           style="
-                                  color: #4F46E5;
-                                  font-weight: 600;
-                                  padding: 6px 16px;
-                                  border-radius: 20px;
-                                  background: rgba(79, 70, 229, 0.08);
-                                  transition: all 0.3s ease;
-                                  text-decoration: none;
-                                  display: inline-block;
-                                "
+                           style="color:#4F46E5;font-weight:600;padding:6px 16px;border-radius:20px;background:rgba(79,70,229,0.08);transition:all 0.3s ease;text-decoration:none;display:inline-block;"
                            onmouseover="this.style.color='#ffffff'; this.style.background='#4F46E5'; this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 14px rgba(79,70,229,0.35)'"
                            onmouseout="this.style.color='#4F46E5'; this.style.background='rgba(79,70,229,0.08)'; this.style.transform='scale(1)'; this.style.boxShadow='none'"
                         >开源地址</a>
@@ -325,7 +332,7 @@ $lottery_enabled = getConfig('lottery_enabled');
         </div>
     </nav>
 
-    <!-- ===== 首屏 ===== -->
+    <!-- ===== 首屏（全屏） ===== -->
     <section class="slice hero-fullscreen">
         <div class="container">
             <div class="row row-grid align-items-center">
@@ -456,16 +463,7 @@ $lottery_enabled = getConfig('lottery_enabled');
                             <a class="nav-link"
                                href="https://github.com/xikns/openct"
                                target="_blank"
-                               style="
-                                      color: #4F46E5;
-                                      font-weight: 600;
-                                      padding: 6px 16px;
-                                      border-radius: 20px;
-                                      background: rgba(79, 70, 229, 0.08);
-                                      transition: all 0.3s ease;
-                                      text-decoration: none;
-                                      display: inline-block;
-                                    "
+                               style="color:#4F46E5;font-weight:600;padding:6px 16px;border-radius:20px;background:rgba(79,70,229,0.08);transition:all 0.3s ease;text-decoration:none;display:inline-block;"
                                onmouseover="this.style.color='#ffffff'; this.style.background='#4F46E5'; this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 14px rgba(79,70,229,0.35)'"
                                onmouseout="this.style.color='#4F46E5'; this.style.background='rgba(79,70,229,0.08)'; this.style.transform='scale(1)'; this.style.boxShadow='none'"
                             >开源地址</a>
@@ -593,19 +591,16 @@ $lottery_enabled = getConfig('lottery_enabled');
     <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.28.0/feather.min.js"></script>
     <script>feather.replace();</script>
 
-    <!-- ===== AOS 滚动动画脚本（优化配置） ===== -->
+    <!-- ===== AOS 滚动动画脚本（所有设备启用） ===== -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
-        // 仅在桌面端启用滚动动画（宽屏体验更佳）
-        if (window.innerWidth >= 768) {
-            AOS.init({
-                duration: 1200,          // 动画持续时间 1.2 秒
-                once: true,              // 只触发一次
-                easing: 'ease-out-quad', // 二次缓出，先快后慢更自然
-                offset: 80,              // 提前触发位置
-                delay: 50                // 基础延迟
-            });
-        }
+        AOS.init({
+            duration: 1200,
+            once: true,
+            easing: 'ease-out-quad',
+            offset: 80,
+            delay: 50
+        });
     </script>
 </body>
 </html>

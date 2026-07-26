@@ -3,10 +3,11 @@ require_once 'includes/header.php';
 requireLogin();
 $user = currentUser();
 
-// 只对教师跳转（保留原有逻辑），允许 student_admin 使用个人中心
+// 只对教师跳转，允许 student_admin 使用个人中心
 if ($user['role'] === 'teacher') redirect('admin/index.php');
 
 $message = '';
+$error = '';
 $website_title = getConfig('website_title') ?: '班级积分管理系统';
 
 // 修改密码
@@ -25,6 +26,22 @@ if (isset($_POST['change_password'])) {
     }
 }
 
+// 设置/修改保密问题
+if (isset($_POST['save_secret'])) {
+    $question = trim($_POST['secret_question'] ?? '');
+    $answer = trim($_POST['secret_answer'] ?? '');
+    if (empty($question) || empty($answer)) {
+        $error = '请选择保密问题并填写答案';
+    } elseif (strlen($answer) < 2) {
+        $error = '答案至少2个字符';
+    } else {
+        $stmt = $pdo->prepare("UPDATE users SET secret_question = ?, secret_answer_hash = ? WHERE id = ?");
+        $stmt->execute([$question, password_hash($answer, PASSWORD_DEFAULT), $user['id']]);
+        $message = '保密问题设置成功';
+        $user = currentUser();
+    }
+}
+
 // 上传头像
 if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
     $ext = pathinfo($_FILES['avatar']['name'], PATHINFO_EXTENSION);
@@ -34,7 +51,6 @@ if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
     } else {
         $filename = 'avatar_' . $user['id'] . '_' . time() . '.' . $ext;
         move_uploaded_file($_FILES['avatar']['tmp_name'], 'uploads/avatars/' . $filename);
-        // 删除旧头像（如果不是默认头像）
         if ($user['avatar'] && file_exists('uploads/avatars/' . $user['avatar'])) {
             unlink('uploads/avatars/' . $user['avatar']);
         }
@@ -56,103 +72,263 @@ $logs = $pdo->prepare("
 ");
 $logs->execute([$user['id']]);
 $logs = $logs->fetchAll();
+
+// 预定义保密问题列表
+$secretQuestions = [
+    '您母亲的姓名是？',
+    '您父亲的姓名是？',
+    '您小学的校名是？',
+    '您最喜欢的颜色是？',
+    '您的出生地是？',
+    '您最好的朋友的名字是？'
+];
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($website_title) ?> · 个人中心</title>
-    <link rel="stylesheet" href="static/css/quick-website.css" id="stylesheet">
     <style>
-        /* ===== 全局背景 ===== */
+        /* ==========================================
+           CSS 样式重置与布局（统一后台风格）
+           ========================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", sans-serif;
+        }
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%);
-            min-height: 100vh;
+            background-color: #f5f6fa;
+            color: #333;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-        }
-
-        /* ===== 隐藏导航栏中的“登录”链接 ===== */
-        .navbar a[href="login.php"] {
-            display: none !important;
-        }
-
-        /* ===== 顶部标题区域 ===== */
-        .profile-header {
-            text-align: center;
-            padding: 30px 20px 10px;
-        }
-        .profile-header h1 {
-            font-size: 2.8rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            word-break: break-word;
-            margin-bottom: 0.3rem;
-            letter-spacing: -0.5px;
-        }
-        .profile-header p {
-            color: #6b7280;
-            font-size: 1.1rem;
-            margin-top: 4px;
-            font-weight: 400;
-            letter-spacing: 1px;
-        }
-
-        /* ===== 卡片（毛玻璃效果） ===== */
-        .card-apple {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 32px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08), 0 8px 20px rgba(0, 0, 0, 0.02);
-            transition: box-shadow 0.3s ease;
             overflow: hidden;
         }
-        .card-apple:hover {
-            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.12);
+        a { text-decoration: none; color: inherit; }
+
+        /* --- 顶部导航栏（含汉堡） --- */
+        .top-navbar {
+            background: #ffffff;
+            padding: 0 20px;
+            min-height: 64px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            flex-shrink: 0;
+            position: relative;
+            z-index: 100;
+            gap: 10px 0;
+        }
+        .top-navbar .logo-area {
+            display: flex;
+            align-items: center;
+            margin-right: 30px;
+        }
+        .top-navbar .logo-area img {
+            height: 32px;
+            object-fit: contain;
+        }
+        .navbar-toggler {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+            color: #333;
+            margin-left: 10px;
+            order: 2;
+        }
+        .top-navbar .nav-links {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .top-navbar .nav-links a {
+            font-size: 14px;
+            color: #555;
+            font-weight: 500;
+            padding: 6px 10px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .top-navbar .nav-links a:hover { color: #4f46e5; }
+        .top-navbar .nav-links a.active {
+            color: #4f46e5;
+            background: #eef2ff;
+        }
+        .top-navbar .user-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-left: auto;
+            order: 1;
+        }
+        .top-navbar .user-avatar {
+            width: 32px; height: 32px;
+            background: #4f46e5; color: white;
+            border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 14px;
+        }
+        .top-navbar .btn-logout {
+            color: #ef4444;
+            font-weight: 500;
+            cursor: pointer;
         }
 
-        /* ===== 头像区域 ===== */
-        .avatar-wrapper {
-            padding: 30px 20px;
-            text-align: center;
+        /* --- 主内容区 --- */
+        .main-content {
+            flex: 1;
+            padding: 30px 40px;
+            overflow-y: auto;
         }
-        .avatar-wrapper .avatar-img {
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            opacity: 0;
+            animation: fadeUp 0.5s ease forwards;
+            animation-delay: 0.05s;
+        }
+        .page-title h1 { font-size: 22px; font-weight: bold; }
+        .page-title p { font-size: 12px; color: #999; margin-top: 5px; }
+
+        /* --- 消息提示 --- */
+        .msg-box {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border: 1px solid transparent;
+            opacity: 0;
+            animation: fadeUp 0.5s ease forwards;
+            animation-delay: 0.1s;
+        }
+        .msg-success { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+        .msg-error { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+        .msg-info { background: #eef2ff; color: #4f46e5; border-color: #c7d2fe; }
+
+        /* --- 卡片 --- */
+        .card-box {
+            background: white;
+            border-radius: 10px;
+            padding: 25px 30px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+            opacity: 0;
+            animation: fadeUp 0.5s ease forwards;
+            animation-delay: 0.15s;
+        }
+        .card-box hr {
+            border: 0;
+            border-top: 1px solid #f3f4f6;
+            margin: 20px 0;
+        }
+
+        /* --- 表单 --- */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #4b5563;
+            margin-bottom: 4px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: 0.2s;
+        }
+        .form-control:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+        }
+        .form-select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            background: white;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            padding: 8px 20px;
+            border-radius: 6px;
+            border: none;
+            background: #4f46e5;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-primary:hover { background: #4338ca; }
+        .btn-outline {
+            padding: 6px 16px;
+            border-radius: 6px;
+            border: 1px solid #4f46e5;
+            background: transparent;
+            color: #4f46e5;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-outline:hover { background: #eef2ff; }
+
+        /* --- 头像与积分 --- */
+        .profile-avatar {
+            text-align: center;
+            padding: 10px 0;
+        }
+        .profile-avatar img {
             width: 120px;
             height: 120px;
             border-radius: 50%;
             object-fit: cover;
-            border: 4px solid rgba(79, 70, 229, 0.15);
+            border: 4px solid rgba(79,70,229,0.15);
             transition: border-color 0.3s;
         }
-        .avatar-wrapper .avatar-img:hover {
-            border-color: rgba(79, 70, 229, 0.35);
+        .profile-avatar img:hover {
+            border-color: rgba(79,70,229,0.35);
         }
-        .avatar-wrapper .points-display {
-            font-size: 2.2rem;
+        .profile-avatar .points-number {
+            font-size: 2rem;
             font-weight: 700;
             color: #1f2937;
-            margin-top: 8px;
+            margin-top: 6px;
         }
-        .avatar-wrapper .points-label {
+        .profile-avatar .points-label {
             font-size: 0.9rem;
             color: #6b7280;
         }
 
-        /* ===== 文件上传 ===== */
-        .file-input-wrapper {
+        .file-upload-wrapper {
             position: relative;
             overflow: hidden;
             display: inline-block;
             width: 100%;
+            margin-top: 12px;
         }
-        .file-input-wrapper input[type="file"] {
+        .file-upload-wrapper input[type="file"] {
             position: absolute;
             left: 0;
             top: 0;
@@ -161,116 +337,33 @@ $logs = $logs->fetchAll();
             height: 100%;
             cursor: pointer;
         }
-        .file-input-wrapper .file-label {
+        .file-upload-wrapper .file-label {
             display: block;
-            padding: 10px 16px;
+            padding: 8px 12px;
             border: 2px dashed #d1d5db;
-            border-radius: 12px;
+            border-radius: 8px;
             text-align: center;
             color: #6b7280;
             font-size: 14px;
             transition: all 0.3s;
-            background: rgba(249, 250, 251, 0.5);
+            background: #f9fafb;
             cursor: pointer;
         }
-        .file-input-wrapper .file-label:hover {
+        .file-upload-wrapper .file-label:hover {
             border-color: #4f46e5;
-            background: rgba(79, 70, 229, 0.04);
+            background: rgba(79,70,229,0.04);
         }
-        .file-input-wrapper .file-label.has-file {
+        .file-upload-wrapper .file-label.has-file {
             border-color: #4f46e5;
-            background: rgba(79, 70, 229, 0.06);
+            background: rgba(79,70,229,0.06);
             color: #4f46e5;
         }
 
-        /* ===== 表单 ===== */
-        .form-apple {
-            border: 1px solid #e5e7eb;
-            border-radius: 16px;
-            padding: 14px 20px;
-            font-size: 16px;
-            background: rgba(249, 250, 251, 0.8);
-            transition: all 0.25s ease;
-            outline: none;
-            box-sizing: border-box;
-            width: 100%;
-        }
-        .form-apple:focus {
-            border-color: #4f46e5;
-            background: #ffffff;
-            box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
-        }
-
-        .btn-apple {
-            display: inline-block;
-            border: none;
-            border-radius: 40px;
-            padding: 12px 28px;
-            font-size: 15px;
-            font-weight: 600;
-            text-align: center;
-            text-decoration: none;
-            transition: all 0.25s ease;
-            cursor: pointer;
-            box-sizing: border-box;
-        }
-        .btn-apple.primary {
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-            color: white;
-            box-shadow: 0 6px 24px rgba(79, 70, 229, 0.30);
-        }
-        .btn-apple.primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 32px rgba(79, 70, 229, 0.40);
-        }
-        .btn-apple.primary:active {
-            transform: translateY(0);
-        }
-        .btn-apple.outline {
-            background: transparent;
-            color: #4f46e5;
-            border: 2px solid #4f46e5;
-            box-shadow: none;
-        }
-        .btn-apple.outline:hover {
-            background: rgba(79, 70, 229, 0.06);
-            transform: translateY(-2px);
-        }
-        .btn-apple.sm {
-            padding: 8px 18px;
-            font-size: 13px;
-            border-radius: 30px;
-        }
-
-        /* ===== 消息提示 ===== */
-        .msg-box {
-            padding: 12px 16px;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            font-size: 14px;
-            border: 1px solid transparent;
-        }
-        .msg-info {
-            background: #eef2ff;
-            color: #4f46e5;
-            border-color: #c7d2fe;
-        }
-        .msg-success {
-            background: #f0fdf4;
-            color: #15803d;
-            border-color: #bbf7d0;
-        }
-        .msg-error {
-            background: #fef2f2;
-            color: #dc2626;
-            border-color: #fecaca;
-        }
-
-        /* ===== 积分记录表格 ===== */
+        /* --- 积分记录表格 --- */
         .table-responsive {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            margin: 0 -4px;
+            margin-top: 10px;
         }
         table {
             width: 100%;
@@ -279,297 +372,357 @@ $logs = $logs->fetchAll();
             min-width: 380px;
         }
         th, td {
-            padding: 10px 12px;
+            padding: 12px 10px;
             text-align: left;
             border-bottom: 1px solid #f3f4f6;
         }
         th {
-            background: rgba(249, 250, 251, 0.6);
+            background: #f9fafb;
             color: #6b7280;
-            font-weight: 600;
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-weight: 500;
+            font-size: 13px;
         }
         tr:last-child td { border-bottom: none; }
         .text-up { color: #22c55e; font-weight: 600; }
         .text-down { color: #ef4444; font-weight: 600; }
+        .text-muted { color: #9ca3af; }
+        .text-center { text-align: center; }
+        .py-4 { padding: 20px 0; }
 
-        /* ===== 右侧内容区域 ===== */
-        .content-wrapper {
-            padding: 30px 30px 30px 10px;
-        }
-        .content-wrapper h5 {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 14px;
-        }
-        .content-wrapper hr {
-            border: 0;
-            border-top: 1px solid #f1f3f5;
-            margin: 20px 0;
+        /* ==========================================
+           动画与交互增强
+           ========================================== */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* ===== 底部版权 ===== */
-        .profile-footer {
-            text-align: center;
-            padding: 30px 20px 20px;
-            color: #9ca3af;
-            font-size: 0.9rem;
-            line-height: 1.8;
+        .top-navbar .nav-links {
+            transition: max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                        opacity 0.4s ease,
+                        visibility 0s linear 0.4s,
+                        padding 0.3s ease;
         }
-        .profile-footer a {
-            color: #4f46e5;
-            text-decoration: none;
+        .top-navbar .nav-links.open {
+            transition: max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                        opacity 0.3s ease,
+                        visibility 0s linear 0s,
+                        padding 0.3s ease;
         }
-        .profile-footer a:hover {
-            text-decoration: underline;
+
+        .top-navbar .nav-links a,
+        .top-navbar .btn-logout,
+        .btn-primary,
+        .btn-outline {
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s, color 0.2s, border-color 0.2s;
+        }
+        .top-navbar .nav-links a:hover,
+        .top-navbar .btn-logout:hover,
+        .btn-primary:hover,
+        .btn-outline:hover {
+            transform: scale(1.03);
+        }
+        .btn-primary:active,
+        .btn-outline:active {
+            transform: scale(0.97);
+        }
+
+        /* 保密问题提示文本 */
+        .current-secret {
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 10px;
+            background: #f9fafb;
+            padding: 6px 12px;
+            border-radius: 6px;
         }
 
         /* ==========================================
            响应式适配
            ========================================== */
 
-        @media (max-width: 767.98px) {
-            .profile-header h1 {
-                font-size: 2.2rem;
+        @media (max-width: 992px) {
+            .top-navbar {
+                min-height: 60px;
+                padding: 0 15px;
             }
-            .profile-header p {
-                font-size: 0.95rem;
+            .navbar-toggler {
+                display: block;
             }
-            .profile-header {
-                padding: 20px 15px 5px;
+            .top-navbar .logo-area {
+                order: 0;
+                margin-right: auto;
             }
-            .card-apple {
-                border-radius: 24px;
+            .top-navbar .user-area {
+                order: 1;
+                margin-left: auto;
+                gap: 10px;
             }
-            .avatar-wrapper {
-                padding: 25px 15px 10px;
-                border-right: none !important;
-                border-bottom: 1px solid rgba(0,0,0,0.05);
-            }
-            .avatar-wrapper .avatar-img {
-                width: 90px;
-                height: 90px;
-            }
-            .avatar-wrapper .points-display {
-                font-size: 1.8rem;
-            }
-            .content-wrapper {
-                padding: 20px 18px;
-            }
-            .content-wrapper h5 {
-                font-size: 15px;
-            }
-            .form-apple {
-                font-size: 15px;
-                padding: 12px 16px;
-                border-radius: 14px;
-            }
-            .btn-apple {
-                font-size: 15px;
-                padding: 12px 20px;
+            .top-navbar .nav-links {
+                flex: 0 0 100%;
+                order: 3;
+                flex-direction: column;
+                background: #fff;
+                padding: 0 10px;
+                gap: 0;
+                border-top: 1px solid #f0f0f0;
+                margin-top: 8px;
+                box-sizing: border-box;
+                visibility: hidden;
+                max-height: 0;
+                opacity: 0;
+                overflow: hidden;
+                transition: max-height 0.35s ease, opacity 0.35s ease, visibility 0s linear 0.35s;
                 width: 100%;
             }
-            .btn-apple.sm {
-                font-size: 13px;
-                padding: 8px 16px;
-                width: auto;
+            .top-navbar .nav-links.open {
+                visibility: visible;
+                max-height: 500px;
+                opacity: 1;
+                transition: max-height 0.35s ease, opacity 0.35s ease, visibility 0s linear 0s;
+                padding: 10px 10px;
             }
-            table {
-                font-size: 13px;
-                min-width: 320px;
+            .top-navbar .nav-links a {
+                white-space: normal;
+                padding: 12px 20px;
+                width: 100%;
+                border-radius: 0;
+                font-size: 15px;
+                border-bottom: 1px solid #f5f5f5;
             }
-            th, td {
-                padding: 8px 8px;
+            .top-navbar .nav-links a:last-child { border-bottom: none; }
+
+            .top-navbar.menu-open {
+                padding-left: 0;
+                padding-right: 0;
             }
-            .msg-box {
-                font-size: 13px;
-                padding: 10px 14px;
+            .top-navbar.menu-open .logo-area,
+            .top-navbar.menu-open .user-area {
+                display: none;
             }
-            .container.py-4 {
-                padding-top: 1rem !important;
-                padding-bottom: 0.5rem !important;
-            }
-            .profile-footer {
-                font-size: 0.8rem;
-                padding: 20px 10px;
-            }
+
+            .main-content { padding: 20px; }
+            .card-box { padding: 20px; }
         }
 
-        @media (max-width: 575.98px) {
-            .profile-header h1 {
-                font-size: 1.8rem;
-            }
-            .profile-header p {
-                font-size: 0.85rem;
-            }
-            .card-apple {
-                border-radius: 20px;
-            }
-            .avatar-wrapper .avatar-img {
-                width: 75px;
-                height: 75px;
-            }
-            .avatar-wrapper .points-display {
-                font-size: 1.5rem;
-            }
-            .content-wrapper {
-                padding: 16px 12px;
-            }
-            .form-apple {
-                font-size: 14px;
-                padding: 10px 14px;
-                border-radius: 12px;
-            }
-            .btn-apple {
-                font-size: 14px;
-                padding: 10px 16px;
-                border-radius: 30px;
-            }
-            .btn-apple.sm {
-                font-size: 12px;
-                padding: 6px 14px;
-            }
-            table {
-                font-size: 12px;
-                min-width: 280px;
-            }
-            th, td {
-                padding: 6px 6px;
-            }
-            .file-input-wrapper .file-label {
-                font-size: 13px;
-                padding: 8px 12px;
-            }
+        @media (max-width: 768px) {
+            .top-navbar { min-height: 56px; padding: 0 12px; }
+            .top-navbar .logo-area img { height: 28px; }
+            .top-navbar .user-area { font-size: 13px; gap: 8px; }
+            .top-navbar .user-avatar { width: 28px; height: 28px; font-size: 12px; }
+            .top-navbar .btn-logout { font-size: 13px; }
+            .main-content { padding: 15px; }
+            .page-title h1 { font-size: 20px; }
+            .card-box { padding: 16px; }
+            .profile-avatar img { width: 90px; height: 90px; }
+            .profile-avatar .points-number { font-size: 1.6rem; }
+            .form-control { font-size: 13px; padding: 6px 10px; }
+            .btn-primary { width: 100%; text-align: center; }
+            .btn-outline { width: 100%; text-align: center; }
+            table { font-size: 13px; min-width: 320px; }
+            th, td { padding: 8px 6px; }
+            .msg-box { font-size: 13px; padding: 10px 14px; }
+        }
+
+        @media (max-width: 480px) {
+            .top-navbar { min-height: 50px; padding: 0 8px; }
+            .top-navbar .logo-area img { height: 24px; }
+            .top-navbar .user-area { font-size: 12px; gap: 5px; }
+            .top-navbar .user-avatar { width: 24px; height: 24px; font-size: 10px; }
+            .top-navbar .btn-logout { font-size: 12px; }
+            .navbar-toggler { font-size: 20px; padding: 2px 6px; margin-left: 8px; }
+            .main-content { padding: 10px; }
+            .page-title h1 { font-size: 18px; }
+            .page-title p { font-size: 11px; }
+            .card-box { padding: 12px 14px; }
+            .profile-avatar img { width: 75px; height: 75px; }
+            .profile-avatar .points-number { font-size: 1.4rem; }
+            table { font-size: 12px; min-width: 280px; }
+            th, td { padding: 6px 4px; }
+            .file-upload-wrapper .file-label { font-size: 13px; padding: 6px 10px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- ===== 顶部标题区域 ===== -->
-    <div class="profile-header">
-        <h1><?= htmlspecialchars($website_title) ?></h1>
-        <p>积分管理系统 · 个人中心</p>
-    </div>
+    <!-- 顶部导航栏（与后台完全一致） -->
+    <header class="top-navbar" id="topNavbar">
+        <div class="logo-area">
+            <img src="/static/picture/ailogo.png" alt="Logo">
+        </div>
+        
+        <div class="user-area">
+            <div class="user-avatar"><?= mb_substr($user['realname'], 0, 1) ?></div>
+            <span><?= htmlspecialchars($user['realname']) ?></span>
+            <a href="/admin/logout.php" class="btn-logout">退出</a>
+        </div>
 
-    <!-- ===== 主卡片 ===== -->
-    <div class="container py-4">
-        <div class="row justify-content-center">
-            <div class="col-lg-9">
-                <div class="card-apple">
-                    <div class="row g-0">
-                        <!-- 左侧：头像 + 积分 + 上传 -->
-                        <div class="col-md-4 avatar-wrapper border-end">
-                            <img src="<?= $user['avatar'] ? 'uploads/avatars/'.$user['avatar'] : 'assets/default-avatar.png' ?>" 
-                                 class="avatar-img mb-3" alt="头像">
-                            <div class="points-display"><?= $user['points'] ?></div>
-                            <div class="points-label">当前积分</div>
+        <button class="navbar-toggler" id="navbarToggler" aria-label="切换导航">
+            ☰
+        </button>
 
-                            <form method="post" enctype="multipart/form-data" class="mt-3">
-                                <div class="file-input-wrapper">
-                                    <input type="file" name="avatar" accept="image/*" id="avatarInput">
-                                    <label for="avatarInput" class="file-label" id="fileLabel">📷 点击选择新头像</label>
-                                </div>
-                                <button type="submit" class="btn-apple outline sm mt-2 w-100">更新头像</button>
-                            </form>
-                        </div>
+        <nav class="nav-links" id="navLinks">
+            <?php if ($user['role'] === 'student_admin'): ?>
+                <a href="/admin/points.php">积分管理</a>
+                <a href="/profile.php" class="active">个人中心</a>
+            <?php else: ?>
+                <a href="/index.php">首页</a>
+                <a href="/rankings.php">排行榜</a>
+                <a href="/profile.php" class="active">个人中心</a>
+            <?php endif; ?>
+            <a href="https://xikn.rf.gd" target="_blank">汐科博客</a>
+            <a href="https://xikexinxi.mysxl.cn" target="_blank">汐科信息工作室</a>
+        </nav>
+    </header>
 
-                        <!-- 右侧：密码修改 + 积分记录 -->
-                        <div class="col-md-8 content-wrapper">
-                            <!-- 消息提示 -->
-                            <?php if ($message): ?>
-                                <?php 
-                                    $msgClass = 'msg-info';
-                                    if (strpos($message, '成功') !== false || strpos($message, '更新') !== false) {
-                                        $msgClass = 'msg-success';
-                                    } elseif (strpos($message, '错误') !== false || strpos($message, '至少') !== false || strpos($message, '不允许') !== false) {
-                                        $msgClass = 'msg-error';
-                                    }
-                                ?>
-                                <div class="msg-box <?= $msgClass ?>"><?= htmlspecialchars($message) ?></div>
-                            <?php endif; ?>
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title">
+                <h1>个人中心</h1>
+                <p>头像、密码、保密问题与积分记录</p>
+            </div>
+        </div>
 
-                            <!-- 修改密码 -->
-                            <h5>🔒 修改密码</h5>
-                            <form method="post">
-                                <div class="mb-2">
-                                    <input type="password" name="old_password" class="form-apple" placeholder="原密码" required>
-                                </div>
-                                <div class="mb-2">
-                                    <input type="password" name="new_password" class="form-apple" placeholder="新密码（至少6位）" required minlength="6">
-                                </div>
-                                <button type="submit" name="change_password" class="btn-apple primary">修改密码</button>
-                            </form>
+        <!-- 消息提示 -->
+        <?php if ($message): ?>
+            <?php 
+                $msgClass = 'msg-info';
+                if (strpos($message, '成功') !== false || strpos($message, '更新') !== false) {
+                    $msgClass = 'msg-success';
+                } elseif (strpos($message, '错误') !== false || strpos($message, '至少') !== false || strpos($message, '不允许') !== false) {
+                    $msgClass = 'msg-error';
+                }
+            ?>
+            <div class="msg-box <?= $msgClass ?>"><?= htmlspecialchars($message) ?></div>
+        <?php endif; ?>
+        <?php if ($error): ?>
+            <div class="msg-box msg-error"><?= htmlspecialchars($error) ?></div>
+        <?php endif; ?>
 
-                            <hr>
+        <!-- 主卡片 -->
+        <div class="card-box">
+            <div class="row g-4">
+                <!-- 左侧：头像 + 积分 + 上传 -->
+                <div class="col-md-4">
+                    <div class="profile-avatar">
+                        <img src="<?= $user['avatar'] ? 'uploads/avatars/'.$user['avatar'] : 'assets/default-avatar.png' ?>" alt="头像">
+                        <div class="points-number"><?= $user['points'] ?></div>
+                        <div class="points-label">当前积分</div>
 
-                            <!-- 积分变动记录 -->
-                            <h5>📊 积分变动记录</h5>
-                            <div class="table-responsive">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th style="width:70px;">变动</th>
-                                            <th>原因</th>
-                                            <th style="width:80px;">操作人</th>
-                                            <th style="width:130px;">时间</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                    <?php if ($logs): ?>
-                                        <?php foreach ($logs as $l): ?>
-                                            <tr>
-                                                <td class="<?= $l['changed_points'] >= 0 ? 'text-up' : 'text-down' ?>">
-                                                    <?= $l['changed_points'] > 0 ? '+' . $l['changed_points'] : $l['changed_points'] ?>
-                                                </td>
-                                                <td><?= htmlspecialchars($l['reason'] ?? '-') ?></td>
-                                                <td><?= htmlspecialchars($l['operator_name'] ?? '系统') ?></td>
-                                                <td style="color:#6b7280; font-size:0.85rem;">
-                                                    <?= date('m-d H:i', strtotime($l['created_at'])) ?>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    <?php else: ?>
-                                        <tr>
-                                            <td colspan="4" style="text-align:center; color:#9ca3af; padding:20px 0;">
-                                                暂无积分变动记录
-                                            </td>
-                                        </tr>
-                                    <?php endif; ?>
-                                    </tbody>
-                                </table>
+                        <form method="post" enctype="multipart/form-data" class="mt-3">
+                            <div class="file-upload-wrapper">
+                                <input type="file" name="avatar" accept="image/*" id="avatarInput">
+                                <label for="avatarInput" class="file-label" id="fileLabel">📷 选择新头像</label>
                             </div>
+                            <button type="submit" class="btn-outline mt-2" style="width:100%;">更新头像</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 右侧：密码修改 + 保密问题 + 积分记录 -->
+                <div class="col-md-8">
+                    <!-- 修改密码 -->
+                    <h5 style="font-size:16px; font-weight:600; color:#1f2937; margin-bottom:12px;">🔒 修改密码</h5>
+                    <form method="post">
+                        <div class="form-group">
+                            <input type="password" name="old_password" class="form-control" placeholder="原密码" required>
                         </div>
+                        <div class="form-group">
+                            <input type="password" name="new_password" class="form-control" placeholder="新密码（至少6位）" required minlength="6">
+                        </div>
+                        <button type="submit" name="change_password" class="btn-primary">修改密码</button>
+                    </form>
+
+                    <hr>
+
+                    <!-- 设置保密问题 -->
+                    <h5 style="font-size:16px; font-weight:600; color:#1f2937; margin-bottom:12px;">🛡️ 保密问题（用于密码找回）</h5>
+                    <form method="post">
+                        <div class="form-group">
+                            <label for="secret_question">选择保密问题</label>
+                            <select name="secret_question" id="secret_question" class="form-select">
+                                <option value="">-- 请选择 --</option>
+                                <?php foreach ($secretQuestions as $q): ?>
+                                    <option value="<?= htmlspecialchars($q) ?>" <?= ($user['secret_question'] ?? '') == $q ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($q) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="secret_answer">输入答案</label>
+                            <input type="text" name="secret_answer" id="secret_answer" class="form-control" placeholder="请输入答案" value="">
+                        </div>
+                        <button type="submit" name="save_secret" class="btn-primary">保存保密问题</button>
+                    </form>
+
+                    <?php if (!empty($user['secret_question'])): ?>
+                        <div class="current-secret">
+                            📌 当前保密问题：<?= htmlspecialchars($user['secret_question']) ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <hr>
+
+                    <!-- 积分变动记录 -->
+                    <h5 style="font-size:16px; font-weight:600; color:#1f2937; margin-bottom:12px;">📊 积分变动记录</h5>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width:70px;">变动</th>
+                                    <th>原因</th>
+                                    <th style="width:80px;">操作人</th>
+                                    <th style="width:130px;">时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <?php if ($logs): ?>
+                                <?php foreach ($logs as $l): ?>
+                                    <tr>
+                                        <td class="<?= $l['changed_points'] >= 0 ? 'text-up' : 'text-down' ?>">
+                                            <?= $l['changed_points'] > 0 ? '+' . $l['changed_points'] : $l['changed_points'] ?>
+                                        </td>
+                                        <td><?= htmlspecialchars($l['reason'] ?? '-') ?></td>
+                                        <td><?= htmlspecialchars($l['operator_name'] ?? '系统') ?></td>
+                                        <td style="color:#6b7280; font-size:0.85rem;">
+                                            <?= date('m-d H:i', strtotime($l['created_at'])) ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">暂无积分变动记录</td>
+                                </tr>
+                            <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
-    <!-- ===== 底部版权信息 ===== -->
-    <div class="profile-footer">
-        技术支持 © 2025-2026 <a href="http://xikexinxi.mysxl.cn" target="_blank">汐科信息工作室</a>. All Rights Reserved.<br>
-        Powered By <a href="http://xikn.rf.gd/" target="_blank">汐科的博客</a>.
-    </div>
-
-    <!-- ===== 移除导航栏中的“登录”链接 ===== -->
     <script>
+        // 汉堡菜单切换
         document.addEventListener('DOMContentLoaded', function() {
-            var navLinks = document.querySelectorAll('.navbar a, .nav-link');
-            navLinks.forEach(function(link) {
-                var href = link.getAttribute('href');
-                var text = link.textContent.trim();
-                if (text === '登录' || (href && href.includes('login.php'))) {
-                    link.parentNode.removeChild(link);
-                }
+            const toggler = document.getElementById('navbarToggler');
+            const navLinks = document.getElementById('navLinks');
+            const topNavbar = document.getElementById('topNavbar');
+            toggler.addEventListener('click', function() {
+                navLinks.classList.toggle('open');
+                topNavbar.classList.toggle('menu-open');
+            });
+            navLinks.querySelectorAll('a').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    navLinks.classList.remove('open');
+                    topNavbar.classList.remove('menu-open');
+                });
             });
         });
-    </script>
 
-    <!-- ===== 头像文件上传提示 ===== -->
-    <script>
+        // 头像文件上传提示
         document.addEventListener('DOMContentLoaded', function() {
             var fileInput = document.getElementById('avatarInput');
             var fileLabel = document.getElementById('fileLabel');
@@ -579,7 +732,7 @@ $logs = $logs->fetchAll();
                         fileLabel.textContent = '📎 ' + this.files[0].name;
                         fileLabel.classList.add('has-file');
                     } else {
-                        fileLabel.textContent = '📷 点击选择新头像';
+                        fileLabel.textContent = '📷 选择新头像';
                         fileLabel.classList.remove('has-file');
                     }
                 });
@@ -587,6 +740,5 @@ $logs = $logs->fetchAll();
         });
     </script>
 
-    <?php include 'includes/footer.php'; ?>
 </body>
 </html>

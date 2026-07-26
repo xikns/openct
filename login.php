@@ -267,18 +267,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <!-- ===== 移除导航栏中的“登录”链接 ===== -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var navLinks = document.querySelectorAll('.navbar a, .nav-link');
-            navLinks.forEach(function(link) {
-                var href = link.getAttribute('href');
-                var text = link.textContent.trim();
-                if (text === '登录' || (href && href.includes('login.php'))) {
-                    link.parentNode.removeChild(link);
-                }
-            });
-        });
-    </script>
+   
 
     <?php include 'includes/footer.php'; ?>
 </body>
